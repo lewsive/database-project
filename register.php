@@ -1,39 +1,69 @@
 <?php
+// Include database connection file
+include 'db_connection.php';
+
+// Initialize variables to store error messages
+$errors = [];
+$username = $password = $address = $phone = $available_hours = "";
+
+// Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $servername = "localhost";
-    $username = "root"; // Change if necessary
-    $password = ""; // Change if necessary
-    $dbname = "caregiver_db";
-
-    // Create connection
-    $conn = new mysqli($servername, $username, $password, $dbname);
-
-    // Check connection
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
+    // Sanitize and validate form data
+    $username = trim($_POST['username']);
+    if (empty($username)) {
+        $errors[] = "Username is required.";
     }
 
-    // Get form data
-    $username = $_POST['username'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Hashing password
-    $address = $_POST['address'];
-    $phone = $_POST['phone'];
-    $available_hours = $_POST['available_hours'];
-
-    // Prepare and bind
-    $stmt = $conn->prepare("INSERT INTO users (username, password, address, phone, available_hours) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssi", $username, $password, $address, $phone, $available_hours);
-
-    // Execute and check for errors
-    if ($stmt->execute()) {
-        // Redirect to home page if successful
-        header("Location: home.php"); // Change to your actual home page
-        exit(); // Ensure no further code is executed after redirection
-    } else {
-        echo "Error: " . $stmt->error;
+    $password = trim($_POST['password']);
+    if (empty($password)) {
+        $errors[] = "Password is required.";
     }
 
-    $stmt->close();
-    $conn->close();
+    $address = trim($_POST['address']);
+    if (empty($address)) {
+        $errors[] = "Address is required.";
+    }
+
+    $phone = trim($_POST['phone']);
+    if (empty($phone)) {
+        $errors[] = "Phone number is required.";
+    }
+
+    $available_hours = trim($_POST['available_hours']);
+    if (empty($available_hours) || !is_numeric($available_hours)) {
+        $errors[] = "Available hours must be a valid number.";
+    }
+
+    // If there are no errors, proceed with registration
+    if (empty($errors)) {
+        // Hash the password for security
+        $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+
+        // Prepare the SQL statement
+        $sql = "INSERT INTO users (username, password, address, phone, available_hours) VALUES (?, ?, ?, ?, ?)";
+        
+        // Prepare statement
+        if ($stmt = $conn->prepare($sql)) {
+            // Bind parameters
+            $stmt->bind_param("ssssi", $username, $hashed_password, $address, $phone, $available_hours);
+            
+            // Attempt to execute the prepared statement
+            if ($stmt->execute()) {
+                // Registration successful, redirect to the home page
+                header("Location: http://localhost/database-project/home.html");
+                exit();
+            } else {
+                $errors[] = "Error: Could not execute the query. Please try again later.";
+            }
+
+            // Close statement
+            $stmt->close();
+        } else {
+            $errors[] = "Error: Could not prepare the SQL statement. Please try again later.";
+        }
+    }
 }
+
+// Close connection
+$conn->close();
 ?>
