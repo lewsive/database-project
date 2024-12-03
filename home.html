@@ -1,82 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Home</title>
     <style>
-        /* Ensures the background covers the entire page */
-        html, body {
-            height: 100%;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #FFD700 30%, #8A2BE2 70%);
-            background-size: cover;
-            background-attachment: fixed;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-        }
+      /* Ensures the background covers the entire page */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #ffd700 30%, #8a2be2 70%);
+        background-size: cover;
+        background-attachment: fixed;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+      }
 
-        /* Heading Styling */
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 20px;
-        }
+      /* Heading Styling */
+      h1 {
+        font-size: 2.5em;
+        margin-bottom: 20px;
+      }
 
-        /* Paragraph Styling */
-        p {
-            font-size: 1.2em;
-        }
+      /* Paragraph Styling */
+      p {
+        font-size: 1.2em;
+      }
 
-        /* Button Styling */
-        button {
-            padding: 15px 30px;
-            font-size: 1.2em;
-            margin-top: 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+      /* Button Styling */
+      button {
+        padding: 15px 30px;
+        font-size: 1.2em;
+        margin-top: 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
 
-        button:hover {
-            opacity: 0.8;
-        }
+      button:hover {
+        opacity: 0.8;
+      }
 
-        /* Login Button Color */
-        .login-btn {
-            background-color: #4B0082; /* Dark Violet */
-        }
+      /* Login Button Color */
+      .login-btn {
+        background-color: #4b0082; /* Dark Violet */
+      }
 
-        .login-btn:hover {
-            background-color: #6A0DAD; /* Lighter Violet */
-        }
+      .login-btn:hover {
+        background-color: #6a0dad; /* Lighter Violet */
+      }
 
-        /* Register Button Color */
-        .register-btn {
-            background-color: #28a745; /* Green */
-        }
+      /* Register Button Color */
+      .register-btn {
+        background-color: #28a745; /* Green */
+      }
 
-        .register-btn:hover {
-            background-color: #218838; /* Darker Green */
-        }
+      .register-btn:hover {
+        background-color: #218838; /* Darker Green */
+      }
     </style>
     <script>
-        function goToPage(page) {
-            window.location.href = page;
-        }
+      function goToPage(page) {
+        window.location.href = page;
+      }
     </script>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Welcome to the Caregiver Community</h1>
     <p>Have an account?</p>
-    <button class="login-btn" onclick="goToPage('login.html')">Login</button>
+    <button class="login-btn" onclick="goToPage('login.php')">Login</button>
     <p>First time?</p>
-    <button class="register-btn" onclick="goToPage('register.html')">Register</button>
-</body>
+    <button class="register-btn" onclick="goToPage('register.php')">
+      Register
+    </button>
+  </body>
 </html>
