@@ -1,3 +1,61 @@
+<?php
+require 'dp.php'; 
+session_start();
+
+$error_message = "";
+
+// Initialize form input variables to prevent warnings
+$username = "";
+$password = "";
+$address = "";
+$phone = "";
+$available_hours = 0;
+
+// Process the form only if it’s submitted
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  
+    $username = htmlspecialchars(trim($_POST['username'] ?? ''));
+    $password = htmlspecialchars(trim($_POST['password'] ?? ''));
+    $address = htmlspecialchars(trim($_POST['address'] ?? ''));
+    $phone = htmlspecialchars(trim($_POST['phone'] ?? ''));
+    $available_hours = (int)($_POST['available_hours'] ?? 0);
+
+    // Input validation
+    if (empty($username) || empty($password) || empty($address) || empty($phone) || $available_hours <= 0) {
+        $error_message = "All fields are required, and available hours must be greater than 0.";
+    } else {
+        try {
+            // Hash the password for secure storage
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            $pdo = getDatabaseConnection();
+
+            // SQL query to insert data into the MEMBER table
+            $query = "INSERT INTO MEMBER (PhoneNumber, Address, Password, TotalHours, HoursUsed, Balance, Rating, Username)
+                      VALUES (:phone, :address, :password, :total_hours, :hours_used, :balance, :rating, :username)";
+            $stmt = $pdo->prepare($query);
+
+            // Execute the query with default values for optional fields
+            $stmt->execute([
+                ':phone' => $phone,
+                ':address' => $address,
+                ':password' => $hashed_password,
+                ':total_hours' => $available_hours,
+                ':hours_used' => 0,
+                ':balance' => 0.00, 
+                ':rating' => 0, 
+                ':username' => $username,
+            ]);
+            $_SESSION['username'] = $username;
+            header("Location: dashboard.html");
+            exit();
+        } catch (PDOException $e) {
+            $error_message = "Error: Unable to register, please try again. " . $e->getMessage();
+        }
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,12 +150,12 @@
     </style>
 </head>
 <body>
-    <div class="registration-container">
+<div class="registration-container">
         <h1>Register as a Caregiver</h1>
-        <form action="dashboard.html" method="POST">
+        <form action="register.php" method="POST"> 
             <div class="form-group">
                 <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" value="<?= htmlspecialchars($username) ?>" required>
             </div>
 
             <div class="form-group">
@@ -107,12 +165,12 @@
 
             <div class="form-group">
                 <label for="address">Address:</label>
-                <input type="text" id="address" name="address" required>
+                <input type="text" id="address" name="address" value="<?= htmlspecialchars($address) ?>" required>
             </div>
 
             <div class="form-group">
                 <label for="phone">Phone Number:</label>
-                <input type="tel" id="phone" name="phone" required>
+                <input type="tel" id="phone" name="phone" value="<?= htmlspecialchars($phone) ?>" required>
             </div>
 
             <div class="form-group">
@@ -122,7 +180,13 @@
 
             <input type="submit" value="Register">
         </form>
-        <p>Already have an account? <a href="login.html">Login</a></p>
+        <p>Already have an account? <a href="login.php">Login</a></p>
+
+        <!-- Error Message -->
+        <?php if (!empty($error_message)): ?>
+            <div class="error" style="color: red;"><?= htmlspecialchars($error_message); ?></div>
+        <?php endif; ?>
+
     </div>
 </body>
 </html>
