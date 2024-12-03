@@ -1,3 +1,17 @@
+<?php
+require 'dp.php';
+
+// Database connection
+$pdo = getDatabaseConnection();
+
+// Select the CONTACTS Table
+$query = "SELECT ContractID, StartDate, EndDate, WeeklyHours, Rate, CareGiverPhoneNumber, CareRecieverPhoneNumber, Status FROM CONTRACTS";
+$stmt = $pdo->prepare($query); 
+$stmt->execute(); 
+// get all the rows
+$contracts = $stmt->fetchAll(PDO::FETCH_ASSOC); 
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,32 +103,37 @@ button a:hover {
         <thead>
             <tr>
                 <th>Contract ID</th>
-                <th>Caregiver</th>
-                <th>Care Receiver</th>
-                <th>Hours</th>
-                <th>Cost</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Weekly Hours</th>
+                <th>Rate</th>
+                <th>Caregiver Phone</th>
+                <th>Care Receiver Phone</th>
                 <th>Status</th>
             </tr>
         </thead>
         <tbody id="contractList">
-            <!-- Example contracts -->
-            <tr>
-                <td>001</td>
-                <td>John Doe</td>
-                <td>Jane Smith</td>
-                <td>20</td>
-                <td>$400</td>
-                <td>Approved</td>
-            </tr>
-            <tr>
-                <td>002</td>
-                <td>Emily Johnson</td>
-                <td>Mark Lee</td>
-                <td>15</td>
-                <td>$300</td>
-                <td>Pending</td>
-            </tr>
-            <!-- Add more contracts dynamically -->
+            <!-- Check if there's any rows in the table -->
+            <?php if (count($contracts) > 0): ?>
+                <!-- Printing each row in the table -->
+                <?php foreach ($contracts as $contract): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($contract['ContractID']) ?></td>
+                        <td><?= htmlspecialchars($contract['StartDate']) ?></td>
+                        <td><?= htmlspecialchars($contract['EndDate']) ?></td>
+                        <td><?= htmlspecialchars($contract['WeeklyHours']) ?></td>
+                        <td>$<?= htmlspecialchars($contract['Rate']) ?></td>
+                        <td><?= htmlspecialchars($contract['CareGiverPhoneNumber']) ?></td>
+                        <td><?= htmlspecialchars($contract['CareRecieverPhoneNumber']) ?></td>
+                        <td><?= htmlspecialchars($contract['Status']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <!-- Message if there isn't data -->
+            <?php else: ?>
+                <tr>
+                    <td colspan="7">No contracts found.</td>
+                </tr>
+            <?php endif; ?>
         </tbody>
     </table>
 
