@@ -1,3 +1,33 @@
+<?php
+require 'dp.php';
+
+session_start();
+// checking if logged in
+if (!isset($_SESSION['username'])) {
+    header("Location: home.html"); 
+    exit();
+}
+
+$error_message = "";
+
+try {
+    $pdo = getDatabaseConnection();
+    // querying based on logged in username
+    $query = "SELECT * FROM MEMBER WHERE Username = :username";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':username' => $_SESSION['username']]);
+
+    // get user data
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$user) {
+        $error_message = "User information not found.";
+    }
+} catch (PDOException $e) {
+    $error_message = "Error: Unable to retrieve user information. " . $e->getMessage();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,29 +112,32 @@
     </style>
 </head>
 <body>
-    <div class="info-box">
-        <h1>Member Information</h1>
-        <div class="info-item">
-            <label>Name:</label>
-            <span id="memberName">John Doe</span>
+    <?php if (!empty($error_message)): ?>
+        <div style="color: red;"><?= htmlspecialchars($error_message); ?></div>
+    <?php else: ?>
+        <div class="info-box">
+            <h1>Member Information</h1>
+            <div class="info-item">
+                <label>Name:</label>
+                <span id="memberName">John Doe</span>
+            </div>
+            <div class="info-item">
+                <label>Remaining Available Hours per Week:</label>
+                <span id="remainingHours">15</span>
+            </div>
+            <div class="info-item">
+                <label>Review Rating:</label>
+                <span id="reviewRating">4.5/5</span>
+            </div>
+            <div class="info-item">
+                <label>Contact:</label>
+                <span id="contact">123-456-7890</span>
+            </div>
         </div>
-        <div class="info-item">
-            <label>Remaining Available Hours per Week:</label>
-            <span id="remainingHours">15</span>
-        </div>
-        <div class="info-item">
-            <label>Review Rating:</label>
-            <span id="reviewRating">4.5/5</span>
-        </div>
-        <div class="info-item">
-            <label>Contact:</label>
-            <span id="contact">123-456-7890</span>
-        </div>
-    </div>
 
     <button class="back-btn" type="button"><a href="dashboard.html">Back to Dashboard</a></button>
 
-    <script>
+    <!-- <script>
         // Example data; replace with dynamic data fetching in a real application
         const memberData = {
             name: "John Doe",
@@ -118,6 +151,7 @@
         document.getElementById("remainingHours").textContent = memberData.remainingHours;
         document.getElementById("reviewRating").textContent = `${memberData.reviewRating}/5`;
         document.getElementById("contact").textContent = memberData.contact;
-    </script>
+    </script> -->
+    <?php endif; ?>
 </body>
 </html>
