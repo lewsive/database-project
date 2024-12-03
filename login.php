@@ -1,3 +1,44 @@
+<?php 
+require 'dp.php';
+session_start();
+
+$error_message = "";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = htmlspecialchars(trim($_POST['username'] ?? ''));
+    $password = htmlspecialchars(trim($_POST['password'] ?? ''));
+
+    if(empty($username) || empty($password)) {
+        $error_message = "Both field must be filled";
+    } else {
+        try {
+            $pdo = getDatabaseConnection();
+
+            $query = "SELECT Password FROM MEMBER WHERE Username = :username";
+            $stmt = $pdo->prepare($query);
+            $stmt->execute([':username' => $username]);
+
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
+                if ($user && password_verify($password, $user['Password'])) {
+                    $_SESSION['username'] = $username; 
+                    header("Location: dashboard.html");
+                    exit();
+                } else {
+                    $error_message = "Username and Password Combination did not match.";
+                }
+            } 
+        // Logged in session username
+        $_SESSION['username'] = $username;
+        header("Location: dashboard.html");
+        exit();
+        } catch (PDOException $e) {
+            $error_message = "Error: Unable to process login. " . $e->getMessage();
+        }
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -91,7 +132,7 @@
 <body>
     <div class="login-container">
         <h2>Login</h2>
-        <form action="dashboard.html">
+        <form action="login.php" method="POST">
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required>
@@ -102,7 +143,13 @@
             </div>
             <button type="submit">Login</button>
         </form>
-        <p>Don't have an account? <a href="register.html">Register here</a></p>
+        <p>Don't have an account? <a href="register.php">Register here</a></p>
+
+        <!-- Error Message -->
+        <?php if (!empty($error_message)): ?>
+            <div style="color: red;"><?= htmlspecialchars($error_message); ?></div>
+        <?php endif; ?>
+
     </div>
 </body>
 </html>
