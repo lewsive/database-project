@@ -42,12 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':password' => $hashed_password,
                 ':total_hours' => $available_hours,
                 ':hours_used' => 0,
-                ':balance' => 0.00, 
+                ':balance' => 2000.00, 
                 ':rating' => 0, 
                 ':username' => $username,
             ]);
             $_SESSION['username'] = $username;
-            header("Location: dashboard.html");
+            header("Location: dashboard.php");
             exit();
         } catch (PDOException $e) {
             $error_message = "Error: Unable to register, please try again. " . $e->getMessage();

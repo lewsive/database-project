@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user) {
                 if ($user && password_verify($password, $user['Password'])) {
                     $_SESSION['username'] = $username; 
-                    header("Location: dashboard.html");
+                    header("Location: dashboard.php");
                     exit();
                 } else {
                     $error_message = "Username and Password Combination did not match.";
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } 
         // Logged in session username
         $_SESSION['username'] = $username;
-        header("Location: dashboard.html");
+        header("Location: dashboard.php");
         exit();
         } catch (PDOException $e) {
             $error_message = "Error: Unable to process login. " . $e->getMessage();

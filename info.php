@@ -135,7 +135,7 @@ try {
             </div>
         </div>
 
-    <button class="back-btn" type="button"><a href="dashboard.html">Back to Dashboard</a></button>
+    <button class="back-btn" type="button"><a href="dashboard.php">Back to Dashboard</a></button>
 
     <!-- <script>
         // Example data; replace with dynamic data fetching in a real application
