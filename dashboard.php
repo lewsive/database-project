@@ -148,10 +148,8 @@ if (!isset($_SESSION['username'])) {
       <button><a href="profile.php">View Your Profile</a></button>
       <button><a href="create-a-contract.php">Create a Contract</a></button>
       <button><a href="contract.php">Contracts</a></button>
-      <button>
-        <a href="pending.php">Pending Contracts/Pending Reviews</a>
+      <button><a href="pending.php">Pending Contracts/Pending Reviews</a>
       </button>
-      <button><a href="info.php">Info</a></button>
     </div>
 
     <div class="search-box">
