@@ -1,4 +1,5 @@
 <?php
+require 'dp.php';
 session_start();
 
 // Redirect to login if not logged in
@@ -6,6 +7,8 @@ if (!isset($_SESSION['username'])) {
     header("Location: home.html");
     exit();
 }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -34,27 +37,44 @@ if (!isset($_SESSION['username'])) {
         margin-bottom: 30px;
       }
 
-      form {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 50px;
-      }
-
       label {
         font-size: 1.2em;
         margin-bottom: 10px;
       }
 
-      input[type="text"] {
-        padding: 10px;
-        font-size: 1.2em;
-        width: 300px;
-        margin-bottom: 20px;
-        border: 2px solid #fff;
-        border-radius: 5px;
-        background-color: rgba(255, 255, 255, 0.2);
-        color: white;
+      .search-box{
+        width: 600px;
+        position: relative;
+        display: inline-block;
+        font-size: 14px;
+      }
+      .search-box input[type="text"]{
+          height: 32px;
+          padding: 5px 10px;
+          border: 1px solid #CCCCCC;
+          font-size: 1.2em;
+          background-color: rgba(255, 255, 255, 0.2);
+          color: white;
+      }
+      .result{
+          position: absolute;        
+          z-index: 999;
+          top: 100%;
+          left: 0;
+      }
+      .search-box input[type="text"], .result{
+          width: 100%;
+          box-sizing: border-box;
+      }
+      table {
+        border-collapse: collapse;
+        width:100%;
+      }
+      .result td, th{
+        margin:0;
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
       }
 
       button {
@@ -96,21 +116,33 @@ if (!isset($_SESSION['username'])) {
         gap: 15px;
       }
     </style>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script>
+    $(document).ready(function(){
+        $('.search-box input[type="text"]').on("keyup input", function(){
+            /* Get input value on change */
+            var inputVal = $(this).val();
+            var resultDropdown = $(this).siblings(".result");
+            if(inputVal.length){
+                $.get("livesearch.php", {term: inputVal}).done(function(data){
+                    // Display the returned data in browser
+                    resultDropdown.html(data);
+                });
+            } else{
+                resultDropdown.empty();
+            }
+        });
+        
+        // Set search input value on click of result item
+        $(document).on("click", ".result p", function(){
+            $(this).parents(".search-box").find('input[type="text"]').val($(this).text());
+            $(this).parent(".result").empty();
+        });
+    });
+  </script>
   </head>
   <body>
-    <h1>Search the Caregiver Community:</h1>
-
-    <form action="search_results.php" method="GET">
-      <label for="search">Search:</label>
-      <input
-        type="text"
-        id="search"
-        name="query"
-        placeholder="Enter your search..."
-        required
-      />
-      <button type="submit">Search</button>
-    </form>
+    <h1>Welcome to the Caregiver Community!</h1>
 
     <div class="button-container">
       <button><a href="profile.php">View Your Profile</a></button>
@@ -119,6 +151,12 @@ if (!isset($_SESSION['username'])) {
       <button>
         <a href="pending.php">Pending Contracts/Pending Reviews</a>
       </button>
+      <button><a href="info.php">Info</a></button>
+    </div>
+
+    <div class="search-box">
+        <input type="text" autocomplete="off" placeholder="Search for a Caregiver..." />
+        <table class="result"></table>
     </div>
   </body>
 </html>
