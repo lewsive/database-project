@@ -1,53 +1,67 @@
 <?php
 require 'dp.php';
-session_start(); 
+session_start();
 
-// Redirect to login if not logged in
-if (!isset($_SESSION['username'])) {
-    header("Location: home.html");
+if (!isset($_SESSION['phone_number'])) {
+    header("Location: login.php");
     exit();
 }
 
+$pdo = getDatabaseConnection();
+$logged_in_phone = $_SESSION['phone_number']; // Logged-in user's phone number
 $error_message = "";
 
 try {
-    $pdo = getDatabaseConnection();
-
-    // Fetch pending contracts
-    $query = "SELECT ContractID, StartDate, EndDate, WeeklyHours, Rate, CareGiverPhoneNumber, CareRecieverPhoneNumber, Status 
-              FROM CONTRACTS 
-              WHERE Status = 'Pending'";
+    // Fetch contracts where the logged-in user is the caregiver or receiver, but NOT the initiator
+    $query = "SELECT * FROM CONTRACTS 
+              WHERE (CareGiverPhoneNumber = :phone OR CareRecieverPhoneNumber = :phone) 
+              AND Status = 'Pending'";
     $stmt = $pdo->prepare($query);
-    $stmt->execute();
-    $pendingContracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([':phone' => $logged_in_phone]);
 
+    $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Filter contracts: exclude contracts initiated by the logged-in user
+    $contracts = array_filter($contracts, function ($contract) use ($logged_in_phone) {
+        return $contract['CareGiverPhoneNumber'] === $logged_in_phone || $contract['CareRecieverPhoneNumber'] === $logged_in_phone;
+    });
 } catch (PDOException $e) {
-    $error_message = "Error: Unable to retrieve pending contracts. " . $e->getMessage();
+    $error_message = "Error fetching pending contracts: " . $e->getMessage();
 }
 
-// Handle approve/reject actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_POST['contract_id'])) {
-    $contractID = $_POST['contract_id'];
+// Approve/reject actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contract_id']) && isset($_POST['action'])) {
+    $contract_id = $_POST['contract_id'];
     $action = $_POST['action'];
 
     try {
-        // Determine the new status based on the action
-        $newStatus = ($action === 'approve') ? 'Approved' : 'Rejected';
+        // Fetch the contract to ensure it exists
+        $checkQuery = "SELECT * FROM CONTRACTS WHERE ContractID = :contract_id";
+        $checkStmt = $pdo->prepare($checkQuery);
+        $checkStmt->execute([':contract_id' => $contract_id]);
+        $contract = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-        // Update the contract status in the database
-        $updateQuery = "UPDATE CONTRACTS SET Status = :status WHERE ContractID = :contract_id";
-        $updateStmt = $pdo->prepare($updateQuery);
-        $updateStmt->execute([':status' => $newStatus, ':contract_id' => $contractID]);
+        if (!$contract) {
+            $error_message = "Error: Contract not found.";
+        } elseif ($contract['CareGiverPhoneNumber'] !== $logged_in_phone && $contract['CareRecieverPhoneNumber'] !== $logged_in_phone) {
+            // Deny action if the logged-in user is not part of the contract
+            $error_message = "You cannot approve or reject a contract you are not part of.";
+        } else {
+            // Update the status of the contract
+            $new_status = ($action === 'approve') ? 'Approved' : 'Rejected';
+            $updateQuery = "UPDATE CONTRACTS SET Status = :status WHERE ContractID = :contract_id";
+            $updateStmt = $pdo->prepare($updateQuery);
+            $updateStmt->execute([':status' => $new_status, ':contract_id' => $contract_id]);
 
-        // Redirect to refresh the page
-        header("Location: pending.php");
-        exit();
+            // Redirect to refresh the page
+            header("Location: pending.php?message=Contract $new_status successfully.");
+            exit();
+        }
     } catch (PDOException $e) {
-        $error_message = "Error: Unable to update contract status. " . $e->getMessage();
+        $error_message = "Error updating contract: " . $e->getMessage();
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,7 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pending Reviews/Contracts</title>
     <style>
-        /* Ensures the background covers the entire page */
         html, body {
             height: 100%;
             margin: 0;
@@ -83,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            background-color: rgba(0, 0, 0, 0.5); /* Transparent background for table */
+            background-color: rgba(0, 0, 0, 0.5);
             padding: 10px;
             border-radius: 10px;
         }
@@ -110,12 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
         }
 
         .approve {
-            background-color: #4B0082; /* Dark Violet */
+            background-color: #4B0082;
             color: white;
         }
 
         .approve:hover {
-            background-color: #6A0DAD; /* Lighter Violet */
+            background-color: #6A0DAD;
         }
 
         .reject {
@@ -138,52 +151,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
     </style>
 </head>
 <body>
-    <h1>Pending Reviews/Contracts</h1>
-
-    <?php if (!empty($error_message)): ?>
-        <div style="color: red;"><?= htmlspecialchars($error_message); ?></div>
+    <h1>Pending Contracts</h1>
+    <?php if ($error_message): ?>
+        <p style="color: red;"><?= htmlspecialchars($error_message) ?></p>
     <?php endif; ?>
-
-    <table>
+    <table border="1">
         <thead>
             <tr>
                 <th>Contract ID</th>
-                <th>Caregiver Phone</th>
-                <th>Care Receiver Phone</th>
+                <th>Caregiver</th>
+                <th>Care Receiver</th>
                 <th>Hours</th>
                 <th>Cost</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Action</th>
             </tr>
         </thead>
-        <tbody>
-            <?php if (!empty($pendingContracts)): ?>
-                <?php foreach ($pendingContracts as $contract): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($contract['ContractID']) ?></td>
-                        <td><?= htmlspecialchars($contract['CareGiverPhoneNumber']) ?></td>
-                        <td><?= htmlspecialchars($contract['CareRecieverPhoneNumber']) ?></td>
-                        <td><?= htmlspecialchars($contract['WeeklyHours']) ?></td>
-                        <td>$<?= htmlspecialchars($contract['Rate']) ?></td>
-                        <td><?= htmlspecialchars($contract['Status']) ?></td>
-                        <td>
-                            <form method="POST" action="pending.php">
-                                <input type="hidden" name="contract_id" value="<?= htmlspecialchars($contract['ContractID']) ?>">
-                                <button type="submit" name="action" value="approve" class="approve">Approve</button>
-                                <button type="submit" name="action" value="reject" class="reject">Reject</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="7">No pending contracts found.</td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+       <tbody>
+    <?php if (count($contracts) > 0): ?>
+        <?php foreach ($contracts as $contract): ?>
+            <tr>
+                <td><?= htmlspecialchars($contract['ContractID']) ?></td>
+                <td><?= htmlspecialchars($contract['CareGiverPhoneNumber']) ?></td>
+                <td><?= htmlspecialchars($contract['CareRecieverPhoneNumber']) ?></td>
+                <td><?= htmlspecialchars($contract['WeeklyHours']) ?></td>
+                <td>$<?= htmlspecialchars($contract['Rate']) ?></td>
+                <td>
+                    <?php if ($contract['InitiatorPhone'] === $logged_in_phone): ?>
+                        <!-- Logged-in user is the initiator -->
+                        <p>Pending</p>
+                    <?php else: ?>
+                        <!-- Logged-in user is not the initiator -->
+                        <form action="pending.php" method="POST">
+                            <input type="hidden" name="contract_id" value="<?= $contract['ContractID'] ?>">
+                            <button type="submit" name="action" value="approve" class="approve">Approve</button>
+                            <button type="submit" name="action" value="reject" class="reject">Reject</button>
+                        </form>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <tr>
+            <td colspan="6">No pending contracts.</td>
+        </tr>
+    <?php endif; ?>
+</tbody>
 
-    <button><a href="dashboard.html">Back to Dashboard</a></button>
+
+    </table>
+    <button><a href="dashboard.php">Back to Dashboard</a></button>
 </body>
 </html>
-

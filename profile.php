@@ -3,57 +3,62 @@ require 'dp.php';
 session_start();
 
 // Redirect to login if not logged in
-if (!isset($_SESSION['username'])) {
-    header("Location: home.html");
+if (!isset($_SESSION['phone_number'])) {
+    header("Location: login.php");
     exit();
 }
 
 $error_message = "";
 $success_message = "";
-$balance = 0;
-$averageReview = 0;
-$recentContracts = [];
+
+// Fetch data for the logged-in user
+$logged_in_phone = $_SESSION['phone_number'];
+$pdo = getDatabaseConnection();
 
 try {
-  $pdo = getDatabaseConnection();
+    // Fetch user's total hours, hours used, balance, and rating
+    $query = "SELECT TotalHours, HoursUsed, Balance, Rating FROM MEMBER WHERE PhoneNumber = :phone";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':phone' => $logged_in_phone]);
+    $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-  // Fetch user details
-  $query = "SELECT Balance, Rating FROM MEMBER WHERE Username = :username";
-  $stmt = $pdo->prepare($query);
-  $stmt->execute([':username' => $_SESSION['username']]);
-  $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalHours = $data['TotalHours'];
+    $hoursUsed = $data['HoursUsed'];
+    $remainingHours = $totalHours - $hoursUsed;
+    $balance = $data['Balance'];
+    $rating = $data['Rating'];
 
-  if ($user) {
-      $balance = $user['Balance'];
-      $averageReview = $user['Rating'];
-  }
-
-  // Fetch most recent contracts using JOIN
-  $query = "SELECT c.ContractID, c.CareRecieverPhoneNumber, c.Status 
-            FROM CONTRACTS c
-            JOIN MEMBER m ON c.CareGiverPhoneNumber = m.PhoneNumber
-            WHERE m.Username = :username
-            ORDER BY c.ContractID DESC LIMIT 10";
-  $stmt = $pdo->prepare($query);
-  $stmt->execute([':username' => $_SESSION['username']]);
-  $recentContracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch only approved or denied contracts tied to the logged-in user's phone number, limited to 10
+    $query = "SELECT ContractID, StartDate, EndDate, WeeklyHours, Rate, CareGiverPhoneNumber, CareRecieverPhoneNumber, Status 
+              FROM CONTRACTS 
+              WHERE Status IN ('Approved', 'Denied') 
+              AND (CareGiverPhoneNumber = :phone OR CareRecieverPhoneNumber = :phone)
+              ORDER BY ContractID DESC 
+              LIMIT 10";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':phone' => $logged_in_phone]);
+    $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-  $error_message = "Error fetching profile information: " . $e->getMessage();
+    $error_message = "Error fetching profile information: " . $e->getMessage();
 }
-
 
 // Handle profile updates (e.g., bio)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
     $bio = htmlspecialchars(trim($_POST['bio'] ?? ''));
 
-    try {
-        $query = "UPDATE MEMBER SET Bio = :bio WHERE Username = :username";
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([':bio' => $bio, ':username' => $_SESSION['username']]);
-        $success_message = "Profile updated successfully.";
-    } catch (PDOException $e) {
-        $error_message = "Error updating profile: " . $e->getMessage();
+    // Limit the bio length to 500 characters
+    if (strlen($bio) > 500) {
+        $error_message = "Bio cannot exceed 500 characters.";
+    } else {
+        try {
+            $query = "UPDATE MEMBER SET Bio = :bio WHERE PhoneNumber = :phone";
+            $stmt = $pdo->prepare($query);
+            $stmt->execute([':bio' => $bio, ':phone' => $logged_in_phone]);
+            $success_message = "Profile updated successfully.";
+        } catch (PDOException $e) {
+            $error_message = "Error updating profile: " . $e->getMessage();
+        }
     }
 }
 ?>
@@ -66,7 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Profile</title>
     <style>
-        /* Same styles as in the original HTML */
         html, body {
             height: 100%;
             margin: 0;
@@ -80,8 +84,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
             align-items: flex-start;
             padding-left: 20px;
         }
-        h1, p, table, button {
-            margin: 10px 0;
+        h1, h2 {
+            color: #4B0082; /* Dark Violet */
+        }
+        .section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            width: 100%;
         }
         table {
             width: 100%;
@@ -97,59 +108,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
         }
         button {
             padding: 10px 20px;
-            background-color: #333;
+            background-color: #4B0082;
             border: none;
             color: white;
             cursor: pointer;
-        }
-        button a {
-            color: white;
-            text-decoration: none;
+            border-radius: 5px;
         }
         button:hover {
-            background-color: #555;
-        }
-        footer {
-            margin-top: auto;
-            padding: 10px;
-            text-align: center;
-        }
-        a {
-            color: white;
-            text-decoration: none;
+            background-color: #6A0DAD;
         }
         button a {
-            display: block;
             color: white;
             text-decoration: none;
-            font-size: 1.5em;
         }
         button a:hover {
             text-decoration: underline;
-        }
-        .section {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 5px;
-            width: 100%;
-        }
-        .section h2 {
-            font-size: 1.8em;
-        }
-        .section p {
-            font-size: 1.2em;
-        }
-        input, textarea {
-            padding: 10px;
-            font-size: 1em;
-            width: 100%;
-            margin-top: 10px;
-            border: none;
-            border-radius: 5px;
-        }
-        textarea {
-            height: 100px;
         }
     </style>
 </head>
@@ -164,6 +137,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
         <div style="color: green;"><?= htmlspecialchars($success_message); ?></div>
     <?php endif; ?>
 
+    <!-- Remaining Hours Section -->
+    <div class="section">
+        <h2>Remaining Hours</h2>
+        <p>Your remaining service hours this week: <strong><?= htmlspecialchars($remainingHours) ?></strong></p>
+    </div>
+
     <!-- Care Money Balance Section -->
     <div class="section">
         <h2>Care Money Balance</h2>
@@ -173,32 +152,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
     <!-- Average Review Scores Section -->
     <div class="section">
         <h2>Average Review Score</h2>
-        <p>Your average review score is: <strong><?= htmlspecialchars($averageReview) ?>/5</strong></p>
+        <p>Your average review score is: <strong><?= htmlspecialchars($rating) ?>/5</strong></p>
     </div>
 
-    <!-- Most Recent Contracts Section -->
+    <!-- Approved or Denied Contracts Section -->
     <div class="section">
-        <h2>Most Recent Contracts</h2>
+        <h2>Recent Contracts</h2>
         <table>
             <thead>
                 <tr>
                     <th>Contract ID</th>
-                    <th>Care Receiver</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Weekly Hours</th>
+                    <th>Rate</th>
+                    <th>Caregiver Phone</th>
+                    <th>Care Receiver Phone</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if (!empty($recentContracts)): ?>
-                    <?php foreach ($recentContracts as $contract): ?>
+                <?php if (!empty($contracts)): ?>
+                    <?php foreach ($contracts as $contract): ?>
                         <tr>
                             <td><?= htmlspecialchars($contract['ContractID']) ?></td>
+                            <td><?= htmlspecialchars($contract['StartDate']) ?></td>
+                            <td><?= htmlspecialchars($contract['EndDate']) ?></td>
+                            <td><?= htmlspecialchars($contract['WeeklyHours']) ?></td>
+                            <td>$<?= htmlspecialchars($contract['Rate']) ?></td>
+                            <td><?= htmlspecialchars($contract['CareGiverPhoneNumber']) ?></td>
                             <td><?= htmlspecialchars($contract['CareRecieverPhoneNumber']) ?></td>
                             <td><?= htmlspecialchars($contract['Status']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="3">No recent contracts found.</td>
+                        <td colspan="8">No approved or denied contracts found.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -210,13 +199,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
         <h2>Update Profile</h2>
         <form action="profile.php" method="POST">
             <label for="bio">Update Bio:</label>
-            <textarea id="bio" name="bio" placeholder="Write something about yourself..."></textarea>
+            <textarea id="bio" name="bio" placeholder="Write something about yourself..." maxlength="500"></textarea>
             <button type="submit">Update Profile</button>
         </form>
     </div>
 
     <!-- Back and Sign Out Buttons -->
-    <button><a href="dashboard.html">Back to Dashboard</a></button>
+    <button><a href="dashboard.php">Back to Dashboard</a></button>
     <button type="button"><a href="home.html">Sign Out</a></button>
 </body>
 </html>

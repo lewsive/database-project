@@ -8,30 +8,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = htmlspecialchars(trim($_POST['username'] ?? ''));
     $password = htmlspecialchars(trim($_POST['password'] ?? ''));
 
-    if(empty($username) || empty($password)) {
-        $error_message = "Both field must be filled";
+    if (empty($username) || empty($password)) {
+        $error_message = "Both fields must be filled.";
     } else {
         try {
             $pdo = getDatabaseConnection();
 
-            $query = "SELECT Password FROM MEMBER WHERE Username = :username";
+            // Fetch Password and PhoneNumber for the given username
+            $query = "SELECT Password, PhoneNumber FROM MEMBER WHERE Username = :username";
             $stmt = $pdo->prepare($query);
             $stmt->execute([':username' => $username]);
 
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($user) {
-                if ($user && password_verify($password, $user['Password'])) {
-                    $_SESSION['username'] = $username; 
-                    header("Location: dashboard.php");
-                    exit();
-                } else {
-                    $error_message = "Username and Password Combination did not match.";
-                }
-            } 
-        // Logged in session username
-        $_SESSION['username'] = $username;
-        header("Location: dashboard.php");
-        exit();
+
+            if ($user && password_verify($password, $user['Password'])) {
+                // Store username and phone number in session
+                $_SESSION['username'] = $username;
+                $_SESSION['phone_number'] = $user['PhoneNumber'];
+
+                // Redirect to dashboard
+                header("Location: dashboard.php");
+                exit();
+            } else {
+                $error_message = "Invalid username and password combination.";
+            }
         } catch (PDOException $e) {
             $error_message = "Error: Unable to process login. " . $e->getMessage();
         }
