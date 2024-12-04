@@ -119,7 +119,6 @@ if (!isset($_SESSION['username'])) {
       <button>
         <a href="pending.php">Pending Contracts/Pending Reviews</a>
       </button>
-      <button><a href="info.php">Info</a></button>
     </div>
   </body>
 </html>

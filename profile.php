@@ -16,16 +16,22 @@ $logged_in_phone = $_SESSION['phone_number'];
 $pdo = getDatabaseConnection();
 
 try {
-    // Fetch user's total hours, hours used, balance, and rating
-    $query = "SELECT TotalHours, HoursUsed, Balance FROM MEMBER WHERE PhoneNumber = :phone";
+    // Fetch user's details including total hours, hours used, balance, rating, username, and address
+    $query = "SELECT TotalHours, HoursUsed, Balance, Username, Address FROM MEMBER WHERE PhoneNumber = :phone";
     $stmt = $pdo->prepare($query);
     $stmt->execute([':phone' => $logged_in_phone]);
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$data) {
+        throw new Exception("User information not found.");
+    }
 
     $totalHours = $data['TotalHours'];
     $hoursUsed = $data['HoursUsed'];
     $remainingHours = $totalHours - $hoursUsed;
     $balance = $data['Balance'];
+    $username = $data['Username'];
+    $address = $data['Address'];
 
     // Calculate the average rating from rated contracts
     $query = "SELECT AVG(RatingGiven) AS AverageRating 
@@ -36,10 +42,9 @@ try {
     $stmt->execute([':phone' => $logged_in_phone]);
     $ratingResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Use ternary to handle cases where there are no ratings
     $averageRating = $ratingResult['AverageRating'] ? round($ratingResult['AverageRating'], 2) : 'No ratings yet';
 
-    // Fetch only approved or denied contracts tied to the logged-in user's phone number, limited to 10
+    // Fetch recent contracts (approved or denied)
     $query = "SELECT ContractID, StartDate, EndDate, WeeklyHours, Rate, CareGiverPhoneNumber, CareRecieverPhoneNumber, Status, RatingGiven
               FROM CONTRACTS 
               WHERE Status IN ('Approved', 'Denied') 
@@ -50,7 +55,7 @@ try {
     $stmt->execute([':phone' => $logged_in_phone]);
     $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-} catch (PDOException $e) {
+} catch (Exception $e) {
     $error_message = "Error fetching profile information: " . $e->getMessage();
 }
 
@@ -115,8 +120,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
             text-align: left;
         }
         th {
-            background-color: #f4f4f4;
+            background-color: #4B0082;
+    c       olor: white; 
         }
+
         button {
             padding: 10px 20px;
             background-color: #4B0082;
@@ -141,17 +148,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
     <h1>Your Profile</h1>
 
     <?php if (!empty($error_message)): ?>
-        <div style="color: red;"><?= htmlspecialchars($error_message); ?></div>
+        <div style="color: red;"><?= htmlspecialchars($error_message) ?></div>
     <?php endif; ?>
 
     <?php if (!empty($success_message)): ?>
-        <div style="color: green;"><?= htmlspecialchars($success_message); ?></div>
+        <div style="color: green;"><?= htmlspecialchars($success_message) ?></div>
     <?php endif; ?>
 
-    <!-- Remaining Hours Section -->
+    <!-- Member Information Section -->
     <div class="section">
-        <h2>Remaining Hours</h2>
-        <p>Your remaining service hours this week: <strong><?= htmlspecialchars($remainingHours) ?></strong></p>
+        <h2>Member Information</h2>
+        <p><strong>Name:</strong> <?= htmlspecialchars($username) ?></p>
+        <p><strong>Contact:</strong> <?= htmlspecialchars($logged_in_phone) ?></p>
+        <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
+        <p><strong>Remaining Available Hours:</strong> <?= htmlspecialchars($remainingHours) ?></p>
     </div>
 
     <!-- Care Money Balance Section -->
@@ -166,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
         <p>Your average review score is: <strong><?= htmlspecialchars($averageRating) ?>/5</strong></p>
     </div>
 
-    <!-- Approved or Denied Contracts Section -->
+    <!-- Recent Contracts Section -->
     <div class="section">
         <h2>Recent Contracts</h2>
         <table>
