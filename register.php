@@ -66,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':phone' => $phone,
             ]);
 
-            // Redirect to the login page with a success message
-            header("Location: login.php?message=Registration successful! Please log in.");
+            $_SESSION['username'] = $username;
+            header("Location: dashboard.php");
             exit();
         } catch (PDOException $e) {
             $error_message = "Error: Unable to register, please try again. " . $e->getMessage();
