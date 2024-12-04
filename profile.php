@@ -219,16 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
         </table>
     </div>
 
-    <!-- Profile Update Section -->
-    <div class="section">
-        <h2>Update Profile</h2>
-        <form action="profile.php" method="POST">
-            <label for="bio">Update Bio:</label>
-            <textarea id="bio" name="bio" placeholder="Write something about yourself..." maxlength="500"></textarea>
-            <button type="submit">Update Profile</button>
-        </form>
-    </div>
-
     <!-- Back and Sign Out Buttons -->
     <button><a href="dashboard.php">Back to Dashboard</a></button>
     <button type="button"><a href="home.html">Sign Out</a></button>
