@@ -17,7 +17,7 @@ $pdo = getDatabaseConnection();
 
 try {
     // Fetch user's total hours, hours used, balance, and rating
-    $query = "SELECT TotalHours, HoursUsed, Balance, Rating FROM MEMBER WHERE PhoneNumber = :phone";
+    $query = "SELECT TotalHours, HoursUsed, Balance FROM MEMBER WHERE PhoneNumber = :phone";
     $stmt = $pdo->prepare($query);
     $stmt->execute([':phone' => $logged_in_phone]);
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -26,10 +26,21 @@ try {
     $hoursUsed = $data['HoursUsed'];
     $remainingHours = $totalHours - $hoursUsed;
     $balance = $data['Balance'];
-    $rating = $data['Rating'];
+
+    // Calculate the average rating from rated contracts
+    $query = "SELECT AVG(RatingGiven) AS AverageRating 
+              FROM CONTRACTS 
+              WHERE RatingGiven IS NOT NULL 
+              AND CareGiverPhoneNumber = :phone";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':phone' => $logged_in_phone]);
+    $ratingResult = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Use ternary to handle cases where there are no ratings
+    $averageRating = $ratingResult['AverageRating'] ? round($ratingResult['AverageRating'], 2) : 'No ratings yet';
 
     // Fetch only approved or denied contracts tied to the logged-in user's phone number, limited to 10
-    $query = "SELECT ContractID, StartDate, EndDate, WeeklyHours, Rate, CareGiverPhoneNumber, CareRecieverPhoneNumber, Status 
+    $query = "SELECT ContractID, StartDate, EndDate, WeeklyHours, Rate, CareGiverPhoneNumber, CareRecieverPhoneNumber, Status, RatingGiven
               FROM CONTRACTS 
               WHERE Status IN ('Approved', 'Denied') 
               AND (CareGiverPhoneNumber = :phone OR CareRecieverPhoneNumber = :phone)
@@ -152,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
     <!-- Average Review Scores Section -->
     <div class="section">
         <h2>Average Review Score</h2>
-        <p>Your average review score is: <strong><?= htmlspecialchars($rating) ?>/5</strong></p>
+        <p>Your average review score is: <strong><?= htmlspecialchars($averageRating) ?>/5</strong></p>
     </div>
 
     <!-- Approved or Denied Contracts Section -->
@@ -169,6 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
                     <th>Caregiver Phone</th>
                     <th>Care Receiver Phone</th>
                     <th>Status</th>
+                    <th>Rating</th>
                 </tr>
             </thead>
             <tbody>
@@ -183,11 +195,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bio'])) {
                             <td><?= htmlspecialchars($contract['CareGiverPhoneNumber']) ?></td>
                             <td><?= htmlspecialchars($contract['CareRecieverPhoneNumber']) ?></td>
                             <td><?= htmlspecialchars($contract['Status']) ?></td>
+                            <td>
+                                <?= $contract['RatingGiven'] !== null ? htmlspecialchars($contract['RatingGiven']) . "/5" : "Not Rated" ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="8">No approved or denied contracts found.</td>
+                        <td colspan="9">No approved or denied contracts found.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

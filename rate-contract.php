@@ -21,7 +21,7 @@ try {
     $pdo = getDatabaseConnection();
 
     // Ensure the logged-in user is the care receiver for this contract
-    $query = "SELECT * FROM CONTRACTS 
+    $query = "SELECT CareGiverPhoneNumber FROM CONTRACTS 
               WHERE ContractID = :contractID 
               AND CareRecieverPhoneNumber = :phone 
               AND IsCompleted = 1 
@@ -35,13 +35,22 @@ try {
         exit();
     }
 
+    $caregiverPhone = $contract['CareGiverPhoneNumber'];
+
     // Update the contract with the rating
     $updateQuery = "UPDATE CONTRACTS SET RatingGiven = :rating WHERE ContractID = :contractID";
     $updateStmt = $pdo->prepare($updateQuery);
     $updateStmt->execute([':rating' => $rating, ':contractID' => $contractID]);
 
+    // Update caregiver's average rating in the MEMBER table
+    $updateRatingQuery = "
+        UPDATE MEMBER
+        SET Rating = (SELECT AVG(RatingGiven) FROM CONTRACTS WHERE CareGiverPhoneNumber = :phone AND RatingGiven IS NOT NULL)
+        WHERE PhoneNumber = :phone";
+    $updateRatingStmt = $pdo->prepare($updateRatingQuery);
+    $updateRatingStmt->execute([':phone' => $caregiverPhone]);
+
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }
-?>

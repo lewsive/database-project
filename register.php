@@ -10,6 +10,9 @@ $password = "";
 $address = "";
 $phone = "";
 $available_hours = 0;
+$parent_address = '';
+$parent1_name = '';
+$parent2_name = '';
 
 // Process the form only if it’s submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -19,9 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $address = htmlspecialchars(trim($_POST['address'] ?? ''));
     $phone = htmlspecialchars(trim($_POST['phone'] ?? ''));
     $available_hours = (int)($_POST['available_hours'] ?? 0);
+    $parent_address = htmlspecialchars(trim($_POST['parent_address'] ?? ''));
+    $parent1_name = htmlspecialchars(trim($_POST['parent1_name'] ?? ''));
+    $parent2_name = htmlspecialchars(trim($_POST['parent2_name'] ?? ''));
 
     // Input validation
-    if (empty($username) || empty($password) || empty($address) || empty($phone) || $available_hours <= 0) {
+    if (empty($username) || empty($password) || empty($address) || empty($phone) || $available_hours <= 0 || empty($parent_address) || empty($parent1_name)) {
         $error_message = "All fields are required, and available hours must be greater than 0.";
     } else {
         try {
@@ -46,8 +52,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':rating' => 0, 
                 ':username' => $username,
             ]);
-            $_SESSION['username'] = $username;
-            header("Location: dashboard.php");
+
+            // SQL query to insert data into the PARENT table
+            $query="INSERT INTO PARENT (ParentName1, ParentName2, Address, MemberPhoneNumber)
+                    VALUES (:parent1_name, :parent2_name, :parent_address, :phone)";
+            $stmt = $pdo->prepare($query);
+
+            // Execute the query
+            $stmt->execute([
+                ':parent1_name' => $parent1_name,
+                ':parent2_name' => $parent2_name,
+                ':parent_address' => $parent_address,
+                ':phone' => $phone,
+            ]);
+
+            // Redirect to the login page with a success message
+            header("Location: login.php?message=Registration successful! Please log in.");
             exit();
         } catch (PDOException $e) {
             $error_message = "Error: Unable to register, please try again. " . $e->getMessage();
@@ -176,6 +196,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label for="available_hours">Available Hours per Week:</label>
                 <input type="number" id="available_hours" name="available_hours" required>
+            </div>
+
+            <div class="form-group">
+                <label for="parent1_name">1st Parent's Name:</label>
+                <input type="text" id="parent1_name" name="parent1_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="parent2_name">2nd Parent's Name:</label>
+                <input type="text" id="parent2_name" name="parent2_name">
+            </div>
+
+            <div class="form-group">
+                <label for="parent_address">Parent's Address:</label>
+                <input type="text" id="parent_address" name="parent_address" required>
             </div>
 
             <input type="submit" value="Register">
